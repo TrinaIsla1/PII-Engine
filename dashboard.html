@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#156f63" />
+    <title>PII Anonymization Engine</title>
+    <link rel="icon" type="image/svg+xml" href="/static/logo.svg" />
+    <script src="/static/theme.js"></script>
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/hero-fx.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="container nav-inner">
+        <a class="brand" href="#top" aria-label="PII Anonymization Engine, back to top">
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M24 3 L42 9.5 V23 C42 33.5 34.5 41 24 45 C13.5 41 6 33.5 6 23 V9.5 Z" fill="#156F63" />
+            <rect x="13" y="12.5" width="22" height="4.5" rx="2.25" fill="#E85617" />
+            <path d="M17 25.5 H19.5 M25.5 25.5 H27.8" stroke="#fff" stroke-width="1.6" stroke-linecap="round" />
+            <circle cx="14" cy="25.5" r="3" fill="#fff" />
+            <circle cx="22.5" cy="25.5" r="3" fill="#fff" />
+            <circle cx="33" cy="25.5" r="3" fill="#fff" />
+            <circle cx="33" cy="25.5" r="5.3" fill="none" stroke="#fff" stroke-width="1.5" />
+            <rect x="13" y="33" width="20" height="3.5" rx="1.75" fill="#fff" opacity="0.4" />
+          </svg>
+          <span>PII Anonymization Engine</span>
+        </a>
+        <nav class="nav-links" aria-label="Sections">
+          <a href="#playground">Playground</a>
+          <a href="#lab">DFA simulator</a>
+          <a href="#how">How it works</a>
+        </nav>
+        <button class="icon-btn" id="themeToggle" type="button" aria-label="Switch between light and dark theme">
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.8 6.8 0 0 0 9.8 9.8z" /></svg>
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <canvas class="fx fx-waves" id="fxWaves" aria-hidden="true"></canvas>
+        <canvas class="fx fx-rain" id="fxRain" aria-hidden="true"></canvas>
+        <div class="container hero-grid">
+          <div>
+            <h1>Every redaction is decided by a DFA</h1>
+            <p class="lede">
+              A deterministic finite automaton (DFA) is a fixed table of states and transitions. Here, four
+              of them read each token one character at a time and accept or reject it as an email, phone
+              number or API key. Accepted tokens are replaced in place.
+            </p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#playground">Try the engine</a>
+              <a class="btn" href="#lab">Step through a DFA</a>
+            </div>
+            <p class="hint">Four DFAs: email, phone, API key with a vendor prefix, API key without one.</p>
+          </div>
+          <div class="tape-card" aria-hidden="true">
+            <p class="tape-title">The email DFA reading one character at a time</p>
+            <div class="tape" id="heroTape"></div>
+            <div class="tape-foot">
+              <span class="state-pill" id="heroState">q0</span>
+              <span class="tape-out" id="heroOut"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="playground" aria-labelledby="playgroundTitle">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <h2 id="playgroundTitle">Playground</h2>
+              <p class="section-sub">Enter text, then click Redact to run it through the DFAs. Files are redacted on the server and downloaded.</p>
+            </div>
+            <div class="stats" aria-label="Scan totals">
+              <div class="stat"><strong id="statSafe">0</strong><span>Safe</span></div>
+              <div class="stat redacted"><strong id="statRedacted">0</strong><span>Redacted</span></div>
+              <div class="stat rejected"><strong id="statRejected">0</strong><span>Rejected</span></div>
+            </div>
+          </div>
+
+          <div class="workbench">
+            <div class="panel">
+              <div class="panel-head"><h3>Input</h3></div>
+              <textarea id="rawInput" aria-label="Text to redact" spellcheck="false">http://johndoe.com
+john.doe@email.com
+sk-proj-abc123xyz789def456
++639123456789
+API_KEY=ghp_aB3dE5fG7hI9jK1lM3nO5pQ7rS9
+sk-short</textarea>
+              <div class="dropzone" id="dropZone">
+                <span>Drop a file here (.txt .csv .tsv .log .json .md, up to 5 MB)</span>
+                <button class="btn btn-sm" type="button" id="chooseFile">Choose file</button>
+                <input id="fileInput" type="file" accept=".txt,.csv,.tsv,.log,.json,.md" />
+              </div>
+              <div class="row">
+                <button class="btn btn-primary" type="button" id="redactButton">Redact</button>
+                <button class="btn" type="button" id="fileRedactButton" disabled>Redact file and download</button>
+              </div>
+              <p class="status" id="inputStatus" role="status" aria-live="polite"></p>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head"><h3>Output</h3></div>
+              <textarea id="sanitizedOutput" aria-label="Redacted output" readonly placeholder="Click Redact to see the redacted text."></textarea>
+              <div class="row">
+                <button class="btn" type="button" id="copyButton">Copy</button>
+                <button class="btn" type="button" id="downloadButton">Download .txt</button>
+              </div>
+              <p class="status" id="outputStatus" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+
+          <div class="chips results-filters" id="filters" role="group" aria-label="Filter results"></div>
+          <div class="cards" id="resultsGrid" aria-live="polite">
+            <p class="empty">Click Redact to see which DFA handled each token.</p>
+          </div>
+          <p class="hint" id="resultsHint">Select a result to load its path into the DFA simulator below.</p>
+        </div>
+      </section>
+
+      <section class="section" id="lab" aria-labelledby="labTitle">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <h2 id="labTitle">DFA simulator</h2>
+              <p class="section-sub">
+                Each detector is a DFA: states, an alphabet, a transition table, a start state and accepting
+                states. Run any string through one and watch it move from state to state.
+              </p>
+            </div>
+          </div>
+          <div class="lab-card sim-results" id="simResults">
+            <h3>Redacted in the playground</h3>
+            <p class="hint" id="simResultsEmpty">Click Redact in the playground and the result appears here.</p>
+            <div id="simResultsBody" hidden>
+              <pre class="sim-out" id="simResultText" aria-label="Redacted text"></pre>
+              <p class="hint">Select a token to watch its DFA process it below.</p>
+              <div class="sim-list" id="simResultList"></div>
+            </div>
+          </div>
+          <div class="chips" id="dfaTabs" role="tablist" aria-label="DFAs"></div>
+
+          <div class="lab-card">
+            <p class="dfa-desc" id="dfaDesc"></p>
+            <dl class="dfa-def" id="dfaDef"></dl>
+            <p class="dfa-legend" id="dfaLegend"></p>
+            <div class="diagram" id="diagramWrap"></div>
+            <p class="hint">Any symbol with no arrow leads to the dead state q_d (rejected). A double border marks an accepting state.</p>
+
+            <div class="sim">
+              <form class="sim-form" id="simForm" autocomplete="off">
+                <label class="sr-only" for="simInput">String to run through the DFA</label>
+                <input class="field" id="simInput" type="text" maxlength="200" spellcheck="false" value="john.doe@email.com" />
+                <button class="btn btn-primary" type="submit">Run</button>
+              </form>
+              <div class="sim-tape tape" id="simTape" aria-label="Input characters"></div>
+              <div class="sim-controls">
+                <button class="btn btn-sm" type="button" id="simReset">Reset</button>
+                <button class="btn btn-sm" type="button" id="simBack">Back</button>
+                <button class="btn btn-sm" type="button" id="simStep">Step</button>
+                <button class="btn btn-sm" type="button" id="simPlay">Play</button>
+                <span class="sim-state">Current state <span class="state-pill" id="simState">q0</span></span>
+              </div>
+              <p class="verdict" id="simVerdict" role="status" aria-live="polite"></p>
+              <div class="table-wrap" id="traceWrap"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="how" aria-labelledby="howTitle">
+        <div class="container">
+          <div class="section-head"><h2 id="howTitle">How it works</h2></div>
+          <ol class="steps">
+            <li>
+              <h3>Split into tokens</h3>
+              <p>The text is cut at spaces, commas, quotes and brackets. Each token keeps its position in the original text.</p>
+            </li>
+            <li>
+              <h3>Run the right DFA</h3>
+              <p>A known key prefix (<code>sk-</code>, <code>ghp_</code>) goes to the vendor key DFA, an <code>@</code> to the email DFA, 20 or more characters to the generic key DFA, and a leading <code>+</code> or digits to the phone DFA. The DFA reads the token one character at a time through its transition table.</p>
+            </li>
+            <li>
+              <h3>Accept, then replace</h3>
+              <p>If the DFA ends in its accepting state <code>q1</code> the token becomes a tag like <code>[EMAIL_01]</code>. Any missing transition means the dead state <code>q_d</code>, and the token is left alone.</p>
+            </li>
+          </ol>
+          <p class="note">
+            <code>NAME=value</code> pairs are checked on the value too, so <code>API_KEY=sk-live-...</code> is caught.
+            Known limits: phone numbers with spaces or parentheses, and emails inside URLs such as
+            <code>https://user@host.com</code>, are not detected.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        Runs on 127.0.0.1 only. Text is processed in memory and never stored.
+      </div>
+    </footer>
+
+    <script src="/static/hero-fx.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
